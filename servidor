@@ -32,8 +32,23 @@ def dados_recebidos(conexao, dados):
                 if not(validar_nome(nick)):
                     conexao.enviar(b':server 432 * %s :Erroneous nickname\r\n' % nick)
                 else:
-                    conexao.enviar(b':server 001 %s :Welcome\r\n' % nick)
-                    conexao.enviar(b':server 422 %s :MOTD File is missing\r\n' % nick)
+                    if nick.lower() in apelidos:
+                        if conexao.apelido != b'':
+                            conexao.enviar(b':server 433 %s %s :Nickname is already in use\r\n' % (conexao.apelido, nick))
+                        else:
+                            conexao.enviar(b':server 433 * %s :Nickname is already in use\r\n' % nick)
+
+                    else:
+                        if conexao.apelido != b'':
+                            conexao.enviar(b':%s NICK %s\r\n' % (conexao.apelido, nick))
+                            del apelidos[conexao.apelido.lower()]
+                        else:
+                            conexao.enviar(b':server 001 %s :Welcome\r\n' % nick)
+                            conexao.enviar(b':server 422 %s :MOTD File is missing\r\n' % nick)
+                            
+                        apelidos[nick] = nick.lower()
+                        conexao.apelido = nick
+                        
             else:
                 return sair(conexao)
 
@@ -53,7 +68,7 @@ def dados_recebidos(conexao, dados):
 
 def conexao_aceita(conexao):
     conexao.residuais = b''
-    conexao.apelidos = b'' 
+    conexao.apelido = b'' 
     print(conexao, 'nova conexão')
     conexao.registrar_recebedor(dados_recebidos)
 
