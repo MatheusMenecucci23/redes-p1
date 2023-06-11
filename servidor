@@ -46,9 +46,24 @@ def dados_recebidos(conexao, dados):
                             conexao.enviar(b':server 001 %s :Welcome\r\n' % nick)
                             conexao.enviar(b':server 422 %s :MOTD File is missing\r\n' % nick)
                             
-                        apelidos[nick] = nick.lower()
+                        apelidos[nick.lower()] = conexao
                         conexao.apelido = nick
                         
+            elif dado.startswith(b'PRIVMSG'):
+                 privmsg = dado.replace(b'PRIVMSG ', b'').replace(b'\r\n', b'')
+                 destinatario, mensagem = privmsg.split(b' :', 1)
+                 origem = conexao.apelido
+                 if destinatario is not None:
+                     if destinatario.lower() in apelidos:
+                         apelidos[destinatario.lower()].enviar(b':%s PRIVMSG %s :%s\r\n' % (origem, destinatario, mensagem))
+                 if dado.startswith(b'#'):
+                      canal = dado.replace(b'#', b'')
+                      if canal in canais[canal]:
+                           for usuario in canais[canal]:
+                               if usuario != conexao:
+                                    usuario.enviar(b':%s PRIVMSG %s :%s\r\n' % (origem, b'#' + canal, mensagem))
+                                
+
             else:
                 return sair(conexao)
 
@@ -62,17 +77,19 @@ def dados_recebidos(conexao, dados):
         conexao.enviar(b':server PONG server :' + conexao.residuais.replace(b'PING ', b''))
         conexao.residuais = b''
         
-        print(conexao, d)
+        print(conexao, dado)
 
 
 
 def conexao_aceita(conexao):
     conexao.residuais = b''
-    conexao.apelido = b'' 
+    conexao.apelido = b''
+    conexao.canal = []
     print(conexao, 'nova conexão')
     conexao.registrar_recebedor(dados_recebidos)
 
 apelidos = {}
+canais = {}
 servidor = Servidor(6667)
 servidor.registrar_monitor_de_conexoes_aceitas(conexao_aceita)
 asyncio.get_event_loop().run_forever()
